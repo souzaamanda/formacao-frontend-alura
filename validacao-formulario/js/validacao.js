@@ -56,14 +56,28 @@ const mensagemDeErro = {
     cpf: {
         valueMissing: 'O campo de CPF não pode estar vazio.',
         customError: 'O CPF digitado não é válido.'
+    },
+    cep: {
+        valueMissing: 'O campo de CEP não pode estar vazio.',
+        patternMismatch: 'O CEP digitado não é válido.',
+        customError: 'Não foi possível buscar o CEP.'
+    },
+    logradouro: {
+        valueMissing: 'O campo logradouro não pode estar vazio.'
+    },
+    cidade: {
+        valueMissing: 'O campo cidade não pode estar vazio.'
+    },
+    estado: {
+        valueMissing: 'O campo estado não pode estar vazio.'
     }
-
 }
 
 // objeto que vai conter os diversos tipos de validação
 const validadores = {
     dataNascimento: input => validaDataNascimento(input),
-    cpf: input => validaCPF(input)
+    cpf: input => validaCPF(input),
+    cep: input => recuperarCEP(input)
 }
 
 // função que pega a mensagem de error
@@ -189,4 +203,51 @@ function checaDigitoVerificador (cpf, multiplicador) {
 
 function confirmaDigito(soma) {
     return 11 - (soma % 11)
+}
+
+// validando CEP
+function recuperarCEP (input) {
+    // substituindo tudo que não for números por nada, garantindo assim que vai ser enviado para API apenas números
+    const cep = input.value.replace(/\D/g, '')
+    const url = `https://viacep.com.br/ws/${cep}/json/`
+
+    const options = {
+        method: 'GET', //modo de requisição
+        mode: 'cors', // importanteb para requisição entre API's
+        headers: { // o que espera de resposta da API
+            'content-type': 'application/json; charset = utf-8'
+        } 
+    }
+
+    // validação antes de chamar a requisição, as duas condições tem que ser falsa, ai inverte o valor(!)
+    if(!input.validity.patternMismatch && !input.validity.valueMissing) {
+        fetch(url,options).then (
+            response => response.json()
+        ).then(
+            // recebendo o data que vai ser usado para preencher as informações dos outros campos
+            data => {
+                // tratando erro 
+                if(data.erro) {
+                    input.setCustomValidity ('Não foi possível buscar o CEP.')
+                    return  
+                }
+
+                input.setCustomValidity ('')
+                preencherCamposComCEP(data)
+                return
+            }
+        )
+    }
+
+}
+
+// preenchendo os campos
+function preencherCamposComCEP(data) {
+    const logradouro = document.querySelector('[data-tipo="logradouro"]')
+    const cidade = document.querySelector('[data-tipo="cidade"]')
+    const estado = document.querySelector('[data-tipo="estado"]')
+
+    logradouro.value = data.logradouro
+    cidade.value = data.localidade
+    estado.value = data.uf
 }
